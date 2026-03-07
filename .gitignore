@@ -3,9 +3,7 @@ node_modules/
 
 # Nextron / Electron Build Outputs
 /app/
-/dist/win-unpacked
-/dist/builder-effective-config.yaml
-/dist/builder-debug.yml
+/dist/
 /renderer/out/
 /.next/
 out/
