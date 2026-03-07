@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Nextron / Electron Build Outputs
+/app/
+/dist/
+/renderer/out/
+/.next/
+out/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Config secrets
+config.json
+
+# TypeScript
+next-env.d.ts
+tsbuildinfo

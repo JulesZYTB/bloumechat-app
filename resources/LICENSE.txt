@@ -1,0 +1,80 @@
+CONTRAT DE LICENCE UTILISATEUR FINAL (CLUF) - BLOUMECHAT
+
+Dernière mise à jour : 13 février 2025
+
+IMPORTANT - LISEZ ATTENTIVEMENT : Le présent Contrat de Licence Utilisateur Final (« CLUF ») est un accord légal entre vous (personne physique ou morale unique) et Bloume SAS (« le Concédant ») pour le logiciel BloumeChat (« le Logiciel »), qui inclut le logiciel informatique et peut inclure la documentation électronique associée, les médias et tout contenu en ligne ou électronique. En installant, copiant ou utilisant le Logiciel, vous acceptez d'être lié par les termes de ce CLUF.
+
+1. OCTROI DE LICENCE
+
+1.1. Licence d'Utilisation. Le Concédant vous accorde une licence personnelle, non exclusive, non transférable, révocable pour utiliser le Logiciel sur vos appareils compatibles, conformément aux conditions du présent CLUF et aux règles du Microsoft Store.
+
+1.2. Mises à Jour. Le Concédant peut fournir des mises à jour ou des améliorations du Logiciel, qui seront soumises aux termes de ce CLUF sauf disposition contraire.
+
+2. RESTRICTIONS
+
+2.1. Vous ne pouvez pas :
+- Contourner les limitations techniques du Logiciel
+- Rétro-concevoir, décompiler ou désassembler le Logiciel
+- Publier le Logiciel pour permettre à d'autres de le copier
+- Louer, prêter ou sous-licencier le Logiciel
+- Transférer le Logiciel ou ce CLUF à un tiers
+- Utiliser le Logiciel d'une manière contraire à la loi
+
+3. CONFIDENTIALITÉ ET COLLECTE DE DONNÉES
+
+3.1. Protection des Données. Le Logiciel peut collecter des informations sur votre utilisation. Notre politique de confidentialité, disponible sur https://bloumechat.com/privacy, décrit notre traitement de ces informations.
+
+4. PROPRIÉTÉ INTELLECTUELLE
+
+4.1. Droits Réservés. Le Logiciel est protégé par les lois sur le droit d'auteur et autres droits de propriété intellectuelle. Le Logiciel est concédé sous licence, non vendu.
+
+4.2. Marques. BloumeChat et les logos associés sont des marques déposées ou des marques commerciales de Bloume SAS.
+
+5. GARANTIES ET EXCLUSIONS
+
+5.1. Garantie Limitée. Le Concédant garantit que le Logiciel fonctionnera substantiellement conformément à la documentation pendant une période de 90 jours à compter de la réception.
+
+5.2. Recours. La seule responsabilité du Concédant et votre recours exclusif pour toute violation de la garantie sera, au choix du Concédant :
+(a) Le remboursement du prix payé
+(b) La réparation ou le remplacement du Logiciel
+
+5.3. Exclusions. La garantie limitée est nulle si la défaillance du Logiciel résulte d'un accident, d'un abus ou d'une mauvaise application.
+
+6. LIMITATION DE RESPONSABILITÉ
+
+6.1. Dans toute la mesure permise par la loi applicable, le Concédant ne sera pas responsable des dommages indirects, spéciaux, accessoires ou consécutifs découlant de l'utilisation ou de l'impossibilité d'utiliser le Logiciel.
+
+7. RÉSILIATION
+
+7.1. Sans préjudice de tous autres droits, le Concédant peut résilier ce CLUF si vous ne respectez pas ses termes et conditions. Dans ce cas, vous devez détruire toutes les copies du Logiciel.
+
+8. DROIT APPLICABLE
+
+8.1. Ce CLUF est régi par les lois de la France, sans égard aux conflits de principes juridiques.
+
+9. INTÉGRALITÉ DE L'ACCORD
+
+9.1. Ce CLUF constitue l'intégralité de l'accord entre vous et le Concédant concernant le Logiciel et remplace toutes les communications, propositions et représentations antérieures ou contemporaines concernant le Logiciel.
+
+10. CONFORMITÉ À L'EXPORTATION
+
+10.1. Vous devez vous conformer à toutes les lois et réglementations nationales et internationales en matière d'exportation applicables au Logiciel.
+
+11. DROITS DU CONSOMMATEUR
+
+11.1. Les lois locales de protection des consommateurs peuvent vous accorder des droits que ce CLUF ne peut pas modifier.
+
+12. CONTACT
+
+Pour toute question concernant ce CLUF, contactez :
+Bloume SAS
+Email : support@bloumechat.com
+Site web : https://bloumechat.com
+
+13. MICROSOFT STORE
+
+13.1. Ce Logiciel est distribué via le Microsoft Store et est soumis aux Conditions d'Utilisation du Microsoft Store.
+
+13.2. Microsoft n'est pas responsable du Logiciel et n'offre aucune garantie ou condition concernant le Logiciel.
+
+En installant ou en utilisant le Logiciel, vous reconnaissez avoir lu et compris ce CLUF et acceptez d'être lié par ses termes.

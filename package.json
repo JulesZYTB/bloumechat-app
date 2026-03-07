@@ -1,0 +1,36 @@
+{
+  "private": true,
+  "name": "bloumechat-desktop",
+  "description": "Bloumechat Desktop Application",
+  "version": "1.0.0",
+  "author": "Bloumechat",
+  "main": "app/background.js",
+  "scripts": {
+    "start": "nextron --renderer-port 8899",
+    "dev": "nextron --renderer-port 8899",
+    "build": "nextron build",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
+    "dotenv": "^17.3.1",
+    "electron-is-dev": "^3.0.1",
+    "electron-serve": "^1.3.0",
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16",
+    "@types/react": "^18.2.52",
+    "autoprefixer": "^10.4.19",
+    "electron": "^34.0.0",
+    "electron-builder": "^24.13.3",
+    "next": "^14.2.4",
+    "nextron": "^9.5.0",
+    "postcss": "^8.4.38",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.3"
+  }
+}

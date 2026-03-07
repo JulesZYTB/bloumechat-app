@@ -1,0 +1,28 @@
+appId: com.bloumechat.app
+productName: BloumeChat
+copyright: Copyright © 2026 Bloume SAS
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - from: .
+    filter:
+      - package.json
+      - app
+      - config.json
+publish:
+  provider: github
+  owner: super
+  repo: bloumechat
+nsis:
+  oneClick: false
+  perMachine: true
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: BloumeChat
+  license: resources/LICENSE.txt
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
