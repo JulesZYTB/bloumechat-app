@@ -4,12 +4,19 @@ Lors de l'installation ou de la désinstallation de **BloumeChat**, le moteur **
 
 ## 🏁 Codes de Sortie Standards
 
-| Code | Signification | Description |
+| Scénario | Valeur du code | Documentation Spécifique |
 | :--- | :--- | :--- |
-| **0** | **Succès** | L'opération (installation, désinstallation ou exécution) s'est terminée avec succès. |
-| **1** | **Erreur Générique** | Une erreur inconnue est survenue durant le processus. |
-| **2** | **Annulé par l'utilisateur** | L'utilisateur a cliqué sur le bouton "Annuler" ou a fermé la fenêtre avant la fin. |
-| **1223** | **Action Annulée par l'utilisateur** | Code spécifique à Windows indiquant qu'une action a été annulée (souvent lié à l'UAC). |
+| Scénario | Valeur du code | Documentation Spécifique |
+| :--- | :--- | :--- |
+| **Installation réussie** | **0** | [NSIS Success](https://nsis.sourceforge.io/Docs/Chapter3.html#3.2.2) |
+| **Installation annulée** | **1223** | [System Error Codes](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes) |
+| **L'application existe déjà** | **1** | [NSIS Error](https://nsis.sourceforge.io/Docs/Chapter3.html#3.2.2) |
+| **Installation en cours** | **1618** | [MSI Error Codes](https://learn.microsoft.com/fr-fr/windows/win32/msi/error-codes) |
+| **L'espace disque est plein** | **112** | [System Error Codes](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes) |
+| **Redémarrage requis** | **3010** | [MSI Error Codes](https://learn.microsoft.com/fr-fr/windows/win32/msi/error-codes) |
+| **Panne de réseau** | **12002** | [WinInet Errors](https://learn.microsoft.com/en-us/windows/win32/wininet/wininet-errors) |
+| **Colis rejeté (Policy)** | **1625** | [MSI Error Codes](https://learn.microsoft.com/en-us/windows/win32/msi/error-codes) |
+| **Privilèges insuffisants** | **5** | [System Error Codes](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes) |
 
 ## 🛠️ Codes Spécifiques à electron-builder / NSIS
 
@@ -36,6 +43,19 @@ Lors de l'installation ou de la désinstallation de **BloumeChat**, le moteur **
 ## 🌐 Liens Utiles
 - [Documentation Officielle NSIS](https://nsis.sourceforge.io/Docs/Chapter3.html#3.2.2)
 - [Troubleshoot electron-updater](https://www.electron.build/auto-update)
+
+## 📋 Récapitulatif des Scénarios d'Échec
+
+Voici les valeurs de code de retour et les documentations associées pour les scénarios courants :
+
+- **Installation annulée par l'utilisateur** : Valeur `1223` | [Documentation](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes)
+- **L'application existe déjà** : Valeur `1` | [Documentation](https://nsis.sourceforge.io/Docs/Chapter3.html#3.2.2)
+- **Installation en cours** : Valeur `1618` | [Documentation](https://learn.microsoft.com/fr-fr/windows/win32/msi/error-codes)
+- **L'espace disque est plein** : Valeur `112` | [Documentation](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes)
+- **Redémarrage requis** : Valeur `3010` | [Documentation](https://learn.microsoft.com/fr-fr/windows/win32/msi/error-codes)
+- **Panne de réseau** : Valeur `12002` | [Documentation](https://learn.microsoft.com/en-us/windows/win32/wininet/wininet-errors)
+- **Colis rejeté lors de l'installation** : Valeur `1625` | [Documentation](https://learn.microsoft.com/en-us/windows/win32/msi/error-codes)
+- **Installation réussie** : Valeur `0` | [Documentation](https://nsis.sourceforge.io/Docs/Chapter3.html#3.2.2)
 
 ---
 *Cette documentation est fournie à titre indicatif pour aider à la résolution des problèmes de déploiement de BloumeChat Desktop.*
