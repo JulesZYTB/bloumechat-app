@@ -130,7 +130,8 @@ async function startLocalServer(): Promise<number> {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       partition: 'persist:main',
-      webSecurity: true
+      webSecurity: true,
+      devTools: false
     },
   })
 
@@ -156,7 +157,6 @@ async function startLocalServer(): Promise<number> {
   } else {
     const devPort = process.argv[2] || 8899;
     await mainWindow.loadURL(`http://localhost:${devPort}/home`)
-    mainWindow.webContents.openDevTools()
   }
 
   // Handle Links and Navigation

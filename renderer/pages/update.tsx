@@ -179,12 +179,6 @@ export default function UpdatePage() {
                     >
                         {lang === 'fr' ? 'English' : 'Français'}
                     </button>
-                    <button
-                        onClick={handleSimulate}
-                        className="text-[9px] font-black opacity-10 hover:opacity-100 transition-opacity px-2 py-1 bg-primary/10 rounded"
-                    >
-                        SIMULATE
-                    </button>
                 </div>
             </div>
 

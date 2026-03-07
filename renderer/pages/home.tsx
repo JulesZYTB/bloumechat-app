@@ -67,7 +67,7 @@ export default function HomePage() {
   return (
     <React.Fragment>
       <Head>
-        <title>Bloumechat</title>
+        <title>BloumeChat</title>
       </Head>
 
       {/* Custom Title Bar */}
