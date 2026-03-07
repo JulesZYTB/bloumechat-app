@@ -12,8 +12,8 @@ files:
       - config.json
 publish:
   provider: github
-  owner: super
-  repo: bloumechat
+  owner: JulesZYTB
+  repo: bloumechat-app
 nsis:
   oneClick: false
   perMachine: true

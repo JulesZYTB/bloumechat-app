@@ -1,0 +1,8 @@
+version: 1.0.0
+files:
+  - url: BloumeChat-Setup-1.0.0.exe
+    sha512: tlrLm5pxrj4THERxPf9nI/POL2WXH3CgPtH7uCGhLnsD3HMwlO0aMgJImv5mP2KvSxW7xZp642DbwsH5UYdccQ==
+    size: 87285259
+path: BloumeChat-Setup-1.0.0.exe
+sha512: tlrLm5pxrj4THERxPf9nI/POL2WXH3CgPtH7uCGhLnsD3HMwlO0aMgJImv5mP2KvSxW7xZp642DbwsH5UYdccQ==
+releaseDate: '2026-03-07T17:25:41.736Z'

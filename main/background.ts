@@ -7,6 +7,10 @@ import http from 'http'
 
 const isProd = process.env.NODE_ENV === 'production'
 
+// FIX: Allow cookies in iframes for local development (SameSite issue)
+// This solves the infinite challenge loop when the site is embedded in the app
+app.commandLine.appendSwitch('disable-features', 'SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure');
+
 // Determine config path
 const configPath = path.join(__dirname, '../config.json');
 
