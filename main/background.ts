@@ -223,7 +223,16 @@ ipcMain.handle('get-env', (event, key: string) => appConfig[key] || process.env[
 
 // --- Auto-Updater IPC Bridge ---
 autoUpdater.on('checking-for-update', () => mainWindow?.webContents.send('update-status', { status: 'checking' }))
-autoUpdater.on('update-available', (info) => mainWindow?.webContents.send('update-status', { status: 'available', info }))
+autoUpdater.on('update-available', (info) => {
+  console.log('Update available:', info.version);
+  mainWindow?.webContents.send('update-status', { status: 'available', info });
+  // Automatic redirect to update page
+  const port = isProd ? prodPort : (process.argv[2] || 8899);
+  const updateUrl = isProd
+    ? `http://127.0.0.1:${port}/update`
+    : `http://localhost:${port}/update`;
+  mainWindow?.loadURL(updateUrl);
+})
 autoUpdater.on('update-not-available', (info) => mainWindow?.webContents.send('update-status', { status: 'not-available', info }))
 autoUpdater.on('error', (err) => mainWindow?.webContents.send('update-status', { status: 'error', message: err.message }))
 autoUpdater.on('download-progress', (progressObj) => mainWindow?.webContents.send('update-status', { status: 'downloading', progress: progressObj }))
