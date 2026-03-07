@@ -222,16 +222,28 @@ ipcMain.on('window-close', () => { BrowserWindow.getFocusedWindow()?.close() })
 ipcMain.handle('get-env', (event, key: string) => appConfig[key] || process.env[key])
 
 // --- Auto-Updater IPC Bridge ---
+let isUpdateIgnored = false;
+
 autoUpdater.on('checking-for-update', () => mainWindow?.webContents.send('update-status', { status: 'checking' }))
 autoUpdater.on('update-available', (info) => {
   console.log('Update available:', info.version);
   mainWindow?.webContents.send('update-status', { status: 'available', info });
-  // Automatic redirect to update page
-  const port = isProd ? prodPort : (process.argv[2] || 8899);
-  const updateUrl = isProd
-    ? `http://127.0.0.1:${port}/update`
-    : `http://localhost:${port}/update`;
-  mainWindow?.loadURL(updateUrl);
+
+  if (isUpdateIgnored) return;
+
+  // Automatic redirect to update page ONLY if not already there
+  const currentUrl = mainWindow?.webContents.getURL();
+  if (currentUrl && !currentUrl.includes('/update')) {
+    const port = isProd ? prodPort : (process.argv[2] || 8899);
+    const updateUrl = isProd
+      ? `http://127.0.0.1:${port}/update`
+      : `http://localhost:${port}/update`;
+    mainWindow?.loadURL(updateUrl);
+  }
+})
+
+ipcMain.on('ignore-update', () => {
+  isUpdateIgnored = true;
 })
 autoUpdater.on('update-not-available', (info) => mainWindow?.webContents.send('update-status', { status: 'not-available', info }))
 autoUpdater.on('error', (err) => mainWindow?.webContents.send('update-status', { status: 'error', message: err.message }))
@@ -239,3 +251,9 @@ autoUpdater.on('download-progress', (progressObj) => mainWindow?.webContents.sen
 autoUpdater.on('update-downloaded', (info) => mainWindow?.webContents.send('update-status', { status: 'downloaded', info }))
 ipcMain.on('quit-and-install', () => { autoUpdater.quitAndInstall() })
 ipcMain.on('check-for-updates', () => { autoUpdater.checkForUpdatesAndNotify() })
+ipcMain.on('simulate-update', () => {
+  mainWindow?.webContents.send('update-status', {
+    status: 'available',
+    info: { version: '9.9.9' }
+  })
+})

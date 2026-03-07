@@ -152,9 +152,9 @@ export default function UpdatePage() {
         window.ipc.checkForUpdates()
     }
 
-    const handleSimulate = () => {
+    const handleIgnore = () => {
         // @ts-ignore
-        window.ipc.simulateUpdate()
+        window.ipc.ignoreUpdate()
     }
 
     return (
@@ -165,7 +165,7 @@ export default function UpdatePage() {
 
             {/* Modern TitleBar Space */}
             <div className="h-8 flex items-center px-4 shrink-0 transition-all duration-300" style={{ WebkitAppRegion: 'drag' } as any}>
-                <Link href="/home" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                <Link href="/home" style={{ WebkitAppRegion: 'no-drag' } as any} onClick={handleIgnore}>
                     <Button variant="ghost" size="icon" className="h-6 w-6">
                         <Icons.ArrowLeft />
                     </Button>
@@ -241,7 +241,7 @@ export default function UpdatePage() {
                         </Button>
                     )}
 
-                    <Link href="/home" className="w-full">
+                    <Link href="/home" className="w-full" onClick={handleIgnore}>
                         <Button variant="ghost" className="w-full h-10 text-muted-foreground/60 hover:text-foreground text-xs uppercase tracking-widest font-black">
                             {t('ignore_button')}
                         </Button>

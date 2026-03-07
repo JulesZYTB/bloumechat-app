@@ -29,7 +29,9 @@ const handler = {
     return () => ipcRenderer.removeListener('update-status', listener)
   },
   quitAndInstall: () => ipcRenderer.send('quit-and-install'),
-  checkForUpdates: () => ipcRenderer.send('check-for-updates')
+  checkForUpdates: () => ipcRenderer.send('check-for-updates'),
+  ignoreUpdate: () => ipcRenderer.send('ignore-update'),
+  simulateUpdate: () => ipcRenderer.send('simulate-update')
 }
 
 contextBridge.exposeInMainWorld('ipc', handler)

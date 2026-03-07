@@ -14,7 +14,10 @@ publish:
   provider: github
   owner: JulesZYTB
   repo: bloumechat-app
+win:
+  artifactName: "${productName}-Setup-${version}.${ext}"
 nsis:
+  artifactName: "${productName}-Setup-${version}.${ext}"
   oneClick: false
   perMachine: true
   allowElevation: true
