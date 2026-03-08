@@ -8,6 +8,11 @@ import http from 'http'
 
 const isProd = process.env.NODE_ENV === 'production'
 
+// Set Windows App User Model ID — controls the name shown in notifications
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.bloumechat.app')
+}
+
 // FIX: Allow cookies in iframes for local development (SameSite issue)
 // This solves the infinite challenge loop when the site is embedded in the app
 app.commandLine.appendSwitch('disable-features', 'SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure');
@@ -260,11 +265,16 @@ function buildTrayMenu() {
   })
 
   // --- Notification bridge with taskbar flash ---
+  const appIconPath = isProd
+    ? path.join(process.resourcesPath, 'icon.png')
+    : path.join(app.getAppPath(), 'resources', 'icon.png')
+  const appIcon = nativeImage.createFromPath(appIconPath)
+
   ipcMain.on('show-notification', (event, data: { title: string; body: string; icon?: string; channelPublicId: string; serverPublicId?: string }) => {
     const notification = new Notification({
       title: data.title,
       body: data.body,
-      icon: data.icon ? nativeImage.createFromDataURL(data.icon) : undefined
+      icon: data.icon ? nativeImage.createFromDataURL(data.icon) : appIcon
     })
 
     // Flash taskbar when app is not focused
