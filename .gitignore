@@ -6,6 +6,7 @@ node_modules/
 /dist/
 /renderer/out/
 /.next/
+/renderer/.next/
 out/
 
 # Environment Variables

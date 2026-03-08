@@ -31,7 +31,18 @@ const handler = {
   quitAndInstall: () => ipcRenderer.send('quit-and-install'),
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   ignoreUpdate: () => ipcRenderer.send('ignore-update'),
-  simulateUpdate: () => ipcRenderer.send('simulate-update')
+  simulateUpdate: () => ipcRenderer.send('simulate-update'),
+
+  // --- New features ---
+  setBadgeCount: (count: number) => ipcRenderer.send('set-badge-count', count),
+  getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch'),
+  setAutoLaunch: (enable: boolean) => ipcRenderer.send('set-auto-launch', enable),
+  getZoomLevel: () => ipcRenderer.invoke('get-zoom-level'),
+  onDeepLink: (callback: (data: { action: string; id: string }) => void) => {
+    const listener = (event: any, data: any) => callback(data)
+    ipcRenderer.on('deep-link', listener)
+    return () => ipcRenderer.removeListener('deep-link', listener)
+  },
 }
 
 contextBridge.exposeInMainWorld('ipc', handler)

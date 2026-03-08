@@ -1,17 +1,79 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import Head from 'next/head'
+
+const MIN_LOADING_MS = 3000
+
+const translations = {
+  fr: {
+    loading: 'Chargement de BloumeChat...',
+    back: 'Précédent',
+    forward: 'Suivant',
+  },
+  en: {
+    loading: 'Loading BloumeChat...',
+    back: 'Back',
+    forward: 'Forward',
+  },
+} as const
+
+type Lang = keyof typeof translations
+
+function detectLang(): Lang {
+  if (typeof navigator === 'undefined') return 'fr'
+  const lang = navigator.language?.toLowerCase() || ''
+  if (lang.startsWith('fr')) return 'fr'
+  return 'en'
+}
 
 export default function HomePage() {
   const [siteUrl, setSiteUrl] = useState('')
-  const iframeRef = React.useRef<HTMLIFrameElement>(null)
+  const [isReady, setIsReady] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const loadingStartRef = useRef(Date.now())
+  const t = useMemo(() => translations[detectLang()], [])
+
+  // --- Apply system theme immediately on mount ---
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    // Detect system dark mode preference
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)')
+
+    const applySystemTheme = () => {
+      if (prefersDark.matches) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    }
+
+    // Apply immediately
+    applySystemTheme()
+
+    // Listen for system theme changes (user switches Windows dark/light mode)
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      // Only update if no iframe theme override has been received
+      applySystemTheme()
+    }
+    prefersDark.addEventListener('change', handleSystemThemeChange)
+
+    return () => {
+      prefersDark.removeEventListener('change', handleSystemThemeChange)
+    }
+  }, [])
 
   useEffect(() => {
-    // In production, we'd use the real URL. In dev, we use localhost.
-    // Fetch dynamically from main process over IPC since renderer doesn't have reliable process.env
+    loadingStartRef.current = Date.now()
+
     const fetchEnv = async () => {
       // @ts-ignore
       const baseUrl = await window.ipc.getEnv('NEXT_PUBLIC_SITE_URL') || 'https://bloumechat.com'
       setSiteUrl(`${baseUrl}/app`)
+
+      // Ensure minimum loading time of 5 seconds
+      const elapsed = Date.now() - loadingStartRef.current
+      const remaining = Math.max(0, MIN_LOADING_MS - elapsed)
+      setTimeout(() => setIsReady(true), remaining)
     }
     fetchEnv()
 
@@ -27,6 +89,9 @@ export default function HomePage() {
       } else if (event.data?.type === 'SHOW_NOTIFICATION') {
         // @ts-ignore
         window.ipc.showNotification(event.data.notification)
+      } else if (event.data?.type === 'SET_BADGE_COUNT') {
+        // @ts-ignore
+        window.ipc.setBadgeCount(event.data.count ?? 0)
       }
     }
 
@@ -35,7 +100,7 @@ export default function HomePage() {
 
       // Listen for notification clicks from main process
       // @ts-ignore
-      const unsubscribe = window.ipc.onNotificationClick((data: any) => {
+      const unsubNotif = window.ipc.onNotificationClick((data: any) => {
         if (iframeRef.current?.contentWindow) {
           iframeRef.current.contentWindow.postMessage({
             type: 'NAVIGATE',
@@ -45,9 +110,21 @@ export default function HomePage() {
         }
       })
 
+      // Listen for deep links
+      // @ts-ignore
+      const unsubDeepLink = window.ipc.onDeepLink?.((data: any) => {
+        if (iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage({
+            type: 'NAVIGATE',
+            ...data
+          }, '*')
+        }
+      })
+
       return () => {
         window.removeEventListener('message', handleMessage)
-        unsubscribe()
+        unsubNotif()
+        unsubDeepLink?.()
       }
     }
   }, [])
@@ -63,6 +140,8 @@ export default function HomePage() {
       iframeRef.current.contentWindow.postMessage({ type: 'NAV_FORWARD' }, '*')
     }
   }
+
+  const showLoading = !siteUrl || !isReady
 
   return (
     <React.Fragment>
@@ -80,7 +159,7 @@ export default function HomePage() {
           <button
             onClick={handleBack}
             className="w-9 h-[30px] flex items-center justify-center hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
-            title="Précédent"
+            title={t.back}
           >
             <svg viewBox="0 0 10 10" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="1.2">
               <path d="M 7,2 L 3,5 L 7,8" />
@@ -90,7 +169,7 @@ export default function HomePage() {
           <button
             onClick={handleForward}
             className="w-9 h-[30px] flex items-center justify-center hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
-            title="Suivant"
+            title={t.forward}
           >
             <svg viewBox="0 0 10 10" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="1.2">
               <path d="M 3,2 L 7,5 L 3,8" />
@@ -106,7 +185,6 @@ export default function HomePage() {
 
         {/* Right Side: Window Controls */}
         <div className="flex items-center justify-end flex-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          {/* @ts-ignore */}
           <button
             // @ts-ignore
             onClick={() => window.ipc.minimize()}
@@ -133,15 +211,22 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Loading Screen / Embedded Main Site */}
-      {!siteUrl ? (
-        <div className="flex h-screen w-screen items-center justify-center bg-background pt-[30px]">
-          <div className="flex flex-col items-center space-y-4 animate-pulse-slow">
-            <img src="/images/logo.png" alt="Bloumechat" className="w-32 h-32 animate-bounce-subtle" />
-            <h1 className="text-2xl font-bold text-primary">Chargement de Bloumechat...</h1>
+      {/* Loading Screen — always rendered, fades out after 5s minimum */}
+      <div
+        className={`fixed inset-0 flex h-screen w-screen items-center justify-center bg-background pt-[30px] z-[9998] transition-opacity duration-700 ${showLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      >
+        <div className="flex flex-col items-center space-y-6">
+          <img src="/images/logo.png" alt="BloumeChat" className="w-28 h-28 animate-bounce-subtle" />
+          <h1 className="text-xl font-bold text-primary tracking-tight">{t.loading}</h1>
+          {/* Loading bar */}
+          <div className="w-48 h-1 bg-foreground/10 rounded-full overflow-hidden">
+            <div className="h-full bg-primary rounded-full animate-loading-bar" />
           </div>
         </div>
-      ) : (
+      </div>
+
+      {/* Iframe — starts loading immediately but hidden behind loading screen */}
+      {siteUrl && (
         <div className="w-screen h-screen pt-[30px] bg-background overflow-hidden relative">
           <iframe
             ref={iframeRef}
