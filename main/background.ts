@@ -510,7 +510,7 @@ autoUpdater.on('update-not-available', (info) => mainWindow?.webContents.send('u
 autoUpdater.on('error', (err) => mainWindow?.webContents.send('update-status', { status: 'error', message: err.message }))
 autoUpdater.on('download-progress', (progressObj) => mainWindow?.webContents.send('update-status', { status: 'downloading', progress: progressObj }))
 autoUpdater.on('update-downloaded', (info) => mainWindow?.webContents.send('update-status', { status: 'downloaded', info }))
-ipcMain.on('quit-and-install', () => { autoUpdater.quitAndInstall() })
+ipcMain.on('quit-and-install', () => { autoUpdater.quitAndInstall(true, true) })
 ipcMain.on('check-for-updates', () => { autoUpdater.checkForUpdatesAndNotify() })
 ipcMain.on('simulate-update', () => {
   mainWindow?.webContents.send('update-status', {
