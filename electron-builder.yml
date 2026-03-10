@@ -22,7 +22,7 @@ publish:
   owner: JulesZYTB
   repo: bloumechat-app
 win:
-  publisherName: "Bloume SAS"
+  publisherName: ["Bloume SAS", "CN=Bloume SAS, O=Bloume SAS, L=Paris, C=FR"]
   signingHashAlgorithms:
     - sha256
   target:
