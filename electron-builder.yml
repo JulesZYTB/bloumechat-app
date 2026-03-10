@@ -22,7 +22,19 @@ publish:
   owner: JulesZYTB
   repo: bloumechat-app
 win:
+  publisherName: "Bloume SAS"
+  signingHashAlgorithms:
+    - sha256
+  target:
+    - nsis
   artifactName: "${productName}-Setup-${version}.${ext}"
+appx:
+  artifactName: "${productName}-Setup-${version}.${ext}"
+  identityName: com.bloumechat.app
+  publisher: "CN=Bloume SAS, O=Bloume SAS, L=Paris, C=FR"
+  languages:
+    - fr-FR
+    - en-US
 nsis:
   artifactName: "${productName}-Setup-${version}.${ext}"
   oneClick: false

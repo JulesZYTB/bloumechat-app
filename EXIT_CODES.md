@@ -20,11 +20,28 @@ Lors de l'installation ou de la désinstallation de **BloumeChat**, le moteur **
 
 ## 🛠️ Codes Spécifiques à electron-builder / NSIS
 
-| Code | Signification | Description |
-| :--- | :--- | :--- |
-| **3** | **Privilèges Insuffisants** | L'installateur nécessite des droits administrateur pour écrire dans `Program Files`. |
-| **4** | **Fichier en utilisation** | Un fichier requis par l'installateur est actuellement ouvert par une autre application (souvent BloumeChat déjà lancé). |
 | **5** | **Accès Refusé** | L'installateur n'a pas pu accéder à un répertoire ou à une clé de registre spécifique. |
+
+---
+
+## 📦 Codes d'Erreur MSIX / AppX (Windows Store)
+
+Les erreurs MSIX sont souvent retournées sous forme hexadécimale. Voici les plus courantes :
+
+| Code Hex | Nom de l'Erreur | Signification / Solution |
+| :--- | :--- | :--- |
+| **0x8BAD0002** | **E_INSTALL_REGISTRATION_FAILED** | L'enregistrement du package a échoué. Vérifiez les journaux d'événements AppX. |
+| **0x8BAD0042** | **CertNotTrusted** | Le certificat de signature n'est pas approuvé par cette machine. |
+| **0x80073CF0** | **ERROR_INSTALL_OPEN_PACKAGE_FAILED** | Impossible d'ouvrir le package (souvent dû à un fichier corrompu ou non signé). |
+| **0x80073CF3** | **ERROR_INSTALL_RESOLVE_DEPENDENCY_FAILED** | Une dépendance requise est manquante. |
+| **0x80073CFB** | **ERROR_PACKAGE_ALREADY_EXISTS** | Le package est déjà installé ou une version identique bloque l'installation. |
+| **0x80073D06** | **ERROR_INSTALL_OLDER_VERSION_EXIST** | Une version plus récente est déjà installée. |
+| **0x8007000B** | **ERROR_BAD_FORMAT** | Le package est mal formé ou il y a une incohérence dans le nom du Signataire. |
+| **0x8BAD0043** | **PublisherMismatch** | Le nom du Signataire dans le certificat ne correspond pas à celui du Manifeste. |
+
+> [!TIP]
+> Pour plus de détails sur une erreur MSIX, utilisez l'Observateur d'événements :
+> `Journaux des applications et des services > Microsoft > Windows > AppXDeployment-Server > Microsoft-Windows-AppXDeploymentServer/Operational`
 
 ---
 

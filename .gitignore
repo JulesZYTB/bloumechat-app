@@ -30,3 +30,5 @@ config.json
 # TypeScript
 next-env.d.ts
 tsbuildinfo
+
+certf

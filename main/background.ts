@@ -6,7 +6,19 @@ import Store from 'electron-store'
 import fs from 'fs'
 import http from 'http'
 
-const isProd = process.env.NODE_ENV === 'production'
+// --- Configuration Reading ---
+const configPath = path.join(__dirname, '../config.json');
+let appConfig: any = {}
+try {
+  appConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+} catch (e) {
+  console.error("No config.json found or invalid format.")
+}
+
+// Environment Determination (Prefer config.json, fallback to Node env)
+const isProd = appConfig.IS_PROD !== undefined
+  ? appConfig.IS_PROD === true || appConfig.IS_PROD === 'true'
+  : process.env.NODE_ENV === 'production'
 
 // Set Windows App User Model ID — controls the name shown in notifications
 if (process.platform === 'win32') {
@@ -30,16 +42,6 @@ if (process.defaultApp) {
 const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.quit()
-}
-
-// Determine config path
-const configPath = path.join(__dirname, '../config.json');
-
-let appConfig: Record<string, string> = {}
-try {
-  appConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'))
-} catch (e) {
-  console.error("No config.json found or invalid format.")
 }
 
 // Persistent settings store
@@ -155,12 +157,27 @@ function handleDeepLink(url: string) {
 
 // --- Auto-launch helper ---
 function setAutoLaunch(enable: boolean) {
-  app.setLoginItemSettings({
-    openAtLogin: enable,
-    path: app.getPath('exe'),
-    args: ['--hidden']
-  })
-  settingsStore.set('autoLaunch', enable)
+  try {
+    const settings: any = {
+      openAtLogin: enable,
+    }
+
+    if (!isProd) {
+      // In development, we need to pass the app path as the first argument to electron.exe
+      // process.argv[1] is typically the path to the main script in nextron dev
+      settings.path = process.execPath
+      settings.args = [path.resolve(process.argv[1]), '--hidden']
+    } else {
+      // In production, the executable handles itself
+      settings.path = app.getPath('exe')
+      settings.args = ['--hidden']
+    }
+
+    app.setLoginItemSettings(settings)
+    settingsStore.set('autoLaunch', enable)
+  } catch (error) {
+    console.error('Failed to set auto-launch:', error)
+  }
 }
 
 // --- Build tray context menu (dynamic for auto-launch toggle) ---
@@ -214,7 +231,7 @@ function buildTrayMenu() {
       preload: path.join(__dirname, 'preload.js'),
       partition: 'persist:main',
       webSecurity: true,
-      devTools: false
+      devTools: !isProd
     },
   })
 
@@ -250,19 +267,45 @@ function buildTrayMenu() {
   }
 
   // --- Handle Links and Navigation ---
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+  const isExternalUrl = (url: string) => {
     const port = isProd ? prodPort : (process.argv[2] || 8899);
-    const origin = `http://127.0.0.1:${port}`;
-    const localOrigin = `http://localhost:${port}`;
+    const origin = isProd ? `http://127.0.0.1:${port}` : `http://localhost:${port}`;
+    const localOrigin = `http://127.0.0.1:${port}`;
+    const remoteOrigin = appConfig.NEXT_PUBLIC_SITE_URL;
 
+    // Check if it's a web link and NOT an internal or remote origin
     if (url.startsWith('https:') || url.startsWith('http:')) {
-      if (!url.startsWith(origin) && !url.startsWith(localOrigin)) {
-        shell.openExternal(url)
-        return { action: 'deny' }
-      }
+      const isInternal = url.startsWith(origin) || url.startsWith(localOrigin);
+      const isRemote = remoteOrigin && url.startsWith(remoteOrigin);
+      return !isInternal && !isRemote;
     }
-    return { action: 'allow' }
-  })
+    return false;
+  };
+
+  // Handle window.location.href changes (Top-level navigation)
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (isExternalUrl(url)) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
+  // Handle navigations within iframes (e.g., Stripe Redirects)
+  mainWindow.webContents.on('will-frame-navigate', (event) => {
+    if (isExternalUrl(event.url)) {
+      event.preventDefault();
+      shell.openExternal(event.url);
+    }
+  });
+
+  // Handle window.open and target="_blank"
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (isExternalUrl(url)) {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return { action: 'allow' };
+  });
 
   // --- Notification bridge with taskbar flash ---
   const appIconPath = isProd
@@ -408,7 +451,20 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
+  if (server) {
+    server.close(() => {
+      console.log('Local server closed.')
+    })
+  }
 })
+
+// Handle Windows shutdown/logout (session-end)
+if (process.platform === 'win32') {
+  ; (app as any).on('session-end', () => {
+    isAppQuitting = true
+    app.quit()
+  })
+}
 
 ipcMain.on('window-minimize', () => { BrowserWindow.getFocusedWindow()?.minimize() })
 ipcMain.on('window-maximize', () => {

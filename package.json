@@ -2,13 +2,16 @@
   "private": true,
   "name": "bloumechat-desktop",
   "description": "Bloumechat Desktop Application",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "author": "Bloumechat",
   "main": "app/background.js",
   "scripts": {
     "start": "nextron --renderer-port 8899",
     "dev": "nextron --renderer-port 8899",
-    "build": "nextron build",
+    "build": "npm run build:exe",
+    "build:exe": "node -e \"require('dotenv').config(); require('child_process').spawn('npx', ['nextron', 'build', '--win', 'nsis'], {stdio: 'inherit', shell: true})\"",
+    "build:msix": "npx nextron build --win appx",
+    "build:all": "npm run build:exe && npm run build:msix",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
