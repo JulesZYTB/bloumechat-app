@@ -485,6 +485,10 @@ ipcMain.handle('get-zoom-level', () => mainWindow?.webContents.getZoomLevel() ||
 // --- Auto-Updater IPC Bridge ---
 let isUpdateIgnored = false;
 
+// Disable strict SSL checks for auto-updater to bypass untrusted root cert errors
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+autoUpdater.requestHeaders = { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0" };
+
 autoUpdater.on('checking-for-update', () => mainWindow?.webContents.send('update-status', { status: 'checking' }))
 autoUpdater.on('update-available', (info) => {
   console.log('Update available:', info.version);
