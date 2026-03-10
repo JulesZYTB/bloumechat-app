@@ -29,6 +29,7 @@ const handler = {
     return () => ipcRenderer.removeListener('update-status', listener)
   },
   quitAndInstall: () => ipcRenderer.send('quit-and-install'),
+  startDownload: () => ipcRenderer.send('start-download'),
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   ignoreUpdate: () => ipcRenderer.send('ignore-update'),
   simulateUpdate: () => ipcRenderer.send('simulate-update'),
@@ -38,11 +39,12 @@ const handler = {
   getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch'),
   setAutoLaunch: (enable: boolean) => ipcRenderer.send('set-auto-launch', enable),
   getZoomLevel: () => ipcRenderer.invoke('get-zoom-level'),
-  onDeepLink: (callback: (data: { action: string; id: string }) => void) => {
+  onDeepLink: (callback: (data: { action: string; id: string, queryParams?: Record<string, string> }) => void) => {
     const listener = (event: any, data: any) => callback(data)
     ipcRenderer.on('deep-link', listener)
     return () => ipcRenderer.removeListener('deep-link', listener)
   },
+  writeToClipboard: (text: string) => ipcRenderer.send('write-clipboard', text),
 }
 
 contextBridge.exposeInMainWorld('ipc', handler)

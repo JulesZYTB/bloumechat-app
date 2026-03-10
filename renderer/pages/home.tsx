@@ -98,14 +98,13 @@ export default function HomePage() {
     if (typeof window !== 'undefined') {
       window.addEventListener('message', handleMessage)
 
-      // Listen for notification clicks from main process
-      // @ts-ignore
       const unsubNotif = window.ipc.onNotificationClick((data: any) => {
         if (iframeRef.current?.contentWindow) {
           iframeRef.current.contentWindow.postMessage({
             type: 'NAVIGATE',
             channelPublicId: data.channelPublicId,
-            serverPublicId: data.serverPublicId
+            serverPublicId: data.serverPublicId,
+            authorPublicId: data.authorPublicId
           }, '*')
         }
       })

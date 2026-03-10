@@ -1,5 +1,5 @@
 import path from 'path'
-import { app, ipcMain, session, shell, Tray, Menu, nativeImage, BrowserWindow, Notification, globalShortcut } from 'electron'
+import { app, ipcMain, session, shell, Tray, Menu, nativeImage, BrowserWindow, Notification, globalShortcut, clipboard } from 'electron'
 import { createWindow } from './helpers'
 import { autoUpdater } from 'electron-updater'
 import Store from 'electron-store'
@@ -147,8 +147,10 @@ function handleDeepLink(url: string) {
     const action = parsed.hostname // 'channel', 'server', etc.
     const id = parsed.pathname.replace(/^\//, '')
 
-    if (action && id) {
-      mainWindow.webContents.send('deep-link', { action, id })
+    if (action) {
+      // Pass both action, id, and any query parameters (like ?token=...)
+      const queryParams = Object.fromEntries(parsed.searchParams.entries())
+      mainWindow.webContents.send('deep-link', { action, id, queryParams })
     }
   } catch (e) {
     console.error('Failed to parse deep link:', url)
@@ -160,17 +162,13 @@ function setAutoLaunch(enable: boolean) {
   try {
     const settings: any = {
       openAtLogin: enable,
+      path: app.getPath('exe'),
+      args: ['--hidden']
     }
 
-    if (!isProd) {
+    if (!app.isPackaged) {
       // In development, we need to pass the app path as the first argument to electron.exe
-      // process.argv[1] is typically the path to the main script in nextron dev
-      settings.path = process.execPath
-      settings.args = [path.resolve(process.argv[1]), '--hidden']
-    } else {
-      // In production, the executable handles itself
-      settings.path = app.getPath('exe')
-      settings.args = ['--hidden']
+      settings.args = [app.getAppPath(), '--hidden']
     }
 
     app.setLoginItemSettings(settings)
@@ -212,7 +210,15 @@ function buildTrayMenu() {
   }
 
   // Define allowed media permissions
-  const allowedPermissions = ['media', 'mediaKeySystem', 'display-capture', 'notifications', 'fullscreen']
+  const allowedPermissions = [
+    'media',
+    'mediaKeySystem',
+    'display-capture',
+    'notifications',
+    'fullscreen',
+    'clipboard-read',
+    'clipboard-sanitized-write'
+  ]
 
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     callback(allowedPermissions.includes(permission))
@@ -220,6 +226,25 @@ function buildTrayMenu() {
 
   session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
     return allowedPermissions.includes(permission)
+  })
+
+  // Explicitly handle display capture requests (Screen Share)
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    // Automatically select the first available desktop (usually the entire screen)
+    // In a full implementation, you'd show a custom picker UI, but this allows basic screen sharing
+    import('electron').then(({ desktopCapturer }) => {
+      desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+        // Just grab the first screen for simplicity, or find the primary display
+        const screenSource = sources.find(s => s.id.startsWith('screen')) || sources[0]
+        if (screenSource) {
+          callback({ video: screenSource, audio: 'loopback' })
+        } else {
+          console.error("No screen sources found")
+        }
+      }).catch(err => {
+        console.error("Failed to get desktop sources:", err)
+      })
+    })
   })
 
   mainWindow = createWindow('main', {
@@ -313,7 +338,7 @@ function buildTrayMenu() {
     : path.join(app.getAppPath(), 'resources', 'icon.png')
   const appIcon = nativeImage.createFromPath(appIconPath)
 
-  ipcMain.on('show-notification', (event, data: { title: string; body: string; icon?: string; channelPublicId: string; serverPublicId?: string }) => {
+  ipcMain.on('show-notification', (event, data: { title: string; body: string; icon?: string; channelPublicId: string; serverPublicId?: string; authorPublicId?: string }) => {
     const notification = new Notification({
       title: data.title,
       body: data.body,
@@ -331,7 +356,8 @@ function buildTrayMenu() {
       mainWindow?.flashFrame(false) // Stop flashing on click
       mainWindow?.webContents.send('notification-click', {
         channelPublicId: data.channelPublicId,
-        serverPublicId: data.serverPublicId
+        serverPublicId: data.serverPublicId,
+        authorPublicId: data.authorPublicId
       })
     })
 
@@ -422,6 +448,13 @@ function buildTrayMenu() {
     mainWindow.hide()
   }
 
+  // --- Heal / Apply Auto-Launch Settings on Startup ---
+  // This ensures the registry path is updated if the app was moved or updated
+  const storedAutoLaunch = settingsStore.get('autoLaunch', false)
+  if (storedAutoLaunch) {
+    setAutoLaunch(true)
+  }
+
 })()
 
 // --- Handle second instance (single instance lock + deep link) ---
@@ -479,6 +512,11 @@ ipcMain.handle('get-env', (event, key: string) => appConfig[key] || process.env[
 ipcMain.handle('get-auto-launch', () => settingsStore.get('autoLaunch', false))
 ipcMain.on('set-auto-launch', (_event, enable: boolean) => setAutoLaunch(enable))
 
+// --- Clipboard IPC ---
+ipcMain.on('write-clipboard', (_event, text: string) => {
+  clipboard.writeText(text)
+})
+
 // --- Zoom IPC ---
 ipcMain.handle('get-zoom-level', () => mainWindow?.webContents.getZoomLevel() || 0)
 
@@ -488,6 +526,7 @@ let isUpdateIgnored = false;
 // Disable strict SSL checks for auto-updater to bypass untrusted root cert errors
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 autoUpdater.requestHeaders = { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0" };
+autoUpdater.autoDownload = false; // Require explicit user interaction to download
 
 autoUpdater.on('checking-for-update', () => mainWindow?.webContents.send('update-status', { status: 'checking' }))
 autoUpdater.on('update-available', (info) => {
@@ -515,6 +554,7 @@ autoUpdater.on('error', (err) => mainWindow?.webContents.send('update-status', {
 autoUpdater.on('download-progress', (progressObj) => mainWindow?.webContents.send('update-status', { status: 'downloading', progress: progressObj }))
 autoUpdater.on('update-downloaded', (info) => mainWindow?.webContents.send('update-status', { status: 'downloaded', info }))
 ipcMain.on('quit-and-install', () => { autoUpdater.quitAndInstall(true, true) })
+ipcMain.on('start-download', () => { autoUpdater.downloadUpdate() })
 ipcMain.on('check-for-updates', () => { autoUpdater.checkForUpdatesAndNotify() })
 ipcMain.on('simulate-update', () => {
   mainWindow?.webContents.send('update-status', {

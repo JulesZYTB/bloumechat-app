@@ -4,6 +4,10 @@ copyright: Copyright © 2026 Bloume SAS
 directories:
   output: dist
   buildResources: resources
+protocols:
+  name: BloumeChat
+  schemes:
+    - bloumechat
 files:
   - from: .
     filter:
@@ -48,3 +52,21 @@ nsis:
   installerIcon: resources/icon.ico
   uninstallerIcon: resources/icon.ico
   installerHeaderIcon: resources/icon.ico
+
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.social-networking
+  icon: resources/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+
+linux:
+  target:
+    - AppImage
+    - deb
+    - rpm
+    - snap
+  icon: resources/icon.png
+  category: Network

@@ -22,6 +22,7 @@ const Dictionaries: any = {
         idle_desc: "Maintenez votre application à jour pour bénéficier des dernières fonctionnalités.",
         restart_button: "Redémarrer et Installer",
         check_button: "Vérifier maintenant",
+        download_button: "Télécharger la mise à jour",
         recheck_button: "Re-vérifier",
         ignore_button: "Ignorer pour l'instant",
         footer: "BLOUME SAS • EST. 2026"
@@ -44,6 +45,7 @@ const Dictionaries: any = {
         idle_desc: "Keep your application up to date to enjoy the latest features.",
         restart_button: "Restart and Install",
         check_button: "Check now",
+        download_button: "Download update",
         recheck_button: "Re-check",
         ignore_button: "Ignore for now",
         footer: "BLOUME SAS • EST. 2026"
@@ -152,6 +154,12 @@ export default function UpdatePage() {
         window.ipc.checkForUpdates()
     }
 
+    const handleDownload = () => {
+        setUpdateInfo({ status: 'downloading' })
+        // @ts-ignore
+        window.ipc.startDownload()
+    }
+
     const handleIgnore = () => {
         // @ts-ignore
         window.ipc.ignoreUpdate()
@@ -229,6 +237,10 @@ export default function UpdatePage() {
                     {updateInfo.status === 'downloaded' ? (
                         <Button onClick={handleRestart} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-14 rounded-2xl text-lg font-bold shadow-xl shadow-primary/20 transform active:scale-95 transition-all">
                             {t('restart_button')}
+                        </Button>
+                    ) : updateInfo.status === 'available' ? (
+                        <Button onClick={handleDownload} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-14 rounded-2xl text-lg font-bold shadow-xl shadow-primary/20 transform active:scale-95 transition-all">
+                            {t('download_button')}
                         </Button>
                     ) : (
                         <Button
