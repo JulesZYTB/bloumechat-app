@@ -3,7 +3,7 @@
   "name": "bloumechat-desktop",
   "description": "Bloumechat Desktop Application",
   "version": "2.0.8",
-  "author": "Bloumechat",
+  "author": "Bloumechat <contact@bloume.fr>",
   "main": "app/background.js",
   "scripts": {
     "start": "nextron --renderer-port 8899",
