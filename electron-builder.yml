@@ -15,12 +15,8 @@ files:
       - app
       - config.json
 extraResources:
-  - from: resources/icon.png
-    to: icon.png
-  - from: resources/icon.ico
-    to: icon.ico
-  - from: resources/icon.icns
-    to: icon.icns
+  - from: resources/LICENSE.txt
+    to: LICENSE.txt
 publish:
   provider: github
   owner: JulesZYTB
@@ -66,7 +62,5 @@ linux:
   target:
     - AppImage
     - deb
-    - rpm
-    - snap
   icon: resources/icon.png
   category: Network
