@@ -292,22 +292,29 @@ function buildTrayMenu() {
   }
 
   // --- Handle Links and Navigation ---
-  const isExternalUrl = (url: string) => {
-    const port = isProd ? prodPort : (process.argv[2] || 8899);
-    const origin = isProd ? `http://127.0.0.1:${port}` : `http://localhost:${port}`;
-    const localOrigin = `http://127.0.0.1:${port}`;
-    const remoteOrigin = appConfig.NEXT_PUBLIC_SITE_URL;
+  const remoteOrigin: string = appConfig.NEXT_PUBLIC_SITE_URL || 'https://bloumechat.com';
+  // Derive www variant in case the site redirects to/from www
+  const remoteOriginWww = remoteOrigin.replace('https://', 'https://www.').replace('http://', 'http://www.');
 
-    // Check if it's a web link and NOT an internal or remote origin
-    if (url.startsWith('https:') || url.startsWith('http:')) {
-      const isInternal = url.startsWith(origin) || url.startsWith(localOrigin);
-      const isRemote = remoteOrigin && url.startsWith(remoteOrigin);
-      return !isInternal && !isRemote;
-    }
-    return false;
+  const isAllowedUrl = (url: string): boolean => {
+    const port = isProd ? prodPort : (process.argv[2] || 8899);
+    const localOrigin = `http://127.0.0.1:${port}`;
+    const devOrigin = `http://localhost:${port}`;
+    return (
+      url.startsWith(localOrigin) ||
+      url.startsWith(devOrigin) ||
+      url.startsWith(remoteOrigin) ||
+      url.startsWith(remoteOriginWww)
+    );
   };
 
-  // Handle window.location.href changes (Top-level navigation)
+  const isExternalUrl = (url: string): boolean => {
+    if (!url.startsWith('https:') && !url.startsWith('http:')) return false;
+    return !isAllowedUrl(url);
+  };
+
+  // Handle top-level window navigation (main frame only — not iframes)
+  // Using 'will-navigate' which only fires for the main frame
   mainWindow.webContents.on('will-navigate', (event, url) => {
     if (isExternalUrl(url)) {
       event.preventDefault();
@@ -315,8 +322,11 @@ function buildTrayMenu() {
     }
   });
 
-  // Handle navigations within iframes (e.g., Stripe Redirects)
+  // Handle navigations within sub-frames (iframes)
+  // Only intercept truly external URLs — let bloumechat.com & local server navigate freely
   mainWindow.webContents.on('will-frame-navigate', (event) => {
+    // Skip the main frame — handled by will-navigate above
+    if (event.frame === mainWindow?.webContents.mainFrame) return;
     if (isExternalUrl(event.url)) {
       event.preventDefault();
       shell.openExternal(event.url);
@@ -527,6 +537,11 @@ let isUpdateIgnored = false;
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 autoUpdater.requestHeaders = { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0" };
 autoUpdater.autoDownload = false; // Require explicit user interaction to download
+// TEMPORARY: Disable publisher signature verification — the current code signing certificate
+// is self-signed (not issued by a trusted CA), which causes electron-updater to reject
+// updates with "not signed by the application owner" (Windows status UntrustedRoot).
+// Replace this with a CA-trusted OV/EV certificate to re-enable verification.
+autoUpdater.verifyUpdateCodeSignature = false;
 
 autoUpdater.on('checking-for-update', () => mainWindow?.webContents.send('update-status', { status: 'checking' }))
 autoUpdater.on('update-available', (info) => {
