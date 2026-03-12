@@ -1,5 +1,5 @@
 import path from 'path'
-import { app, ipcMain, session, shell, Tray, Menu, nativeImage, BrowserWindow, Notification, globalShortcut, clipboard } from 'electron'
+import { app, ipcMain, session, shell, Tray, Menu, nativeImage, BrowserWindow, Notification, globalShortcut, clipboard, desktopCapturer } from 'electron'
 import { createWindow } from './helpers'
 import { autoUpdater } from 'electron-updater'
 import Store from 'electron-store'
@@ -57,6 +57,52 @@ let mainWindow: BrowserWindow | null = null;
 let server: http.Server | null = null;
 let prodPort: number = 0;
 let isAppQuitting = false;
+
+// --- Port Detection for Development ---
+function getDevPort() {
+  // Nextron usually passes the port as the first argument after electron .
+  // We search specifically for a number to avoid deep link URLs or other flags
+  const args = process.argv.slice(1)
+  const portArg = args.find(arg => /^\d+$/.test(arg))
+  const port = portArg ? parseInt(portArg, 10) : 8899
+  console.log(`[Startup] Detected dev port: ${port} (from argv: ${JSON.stringify(process.argv)})`)
+  return port
+}
+const DEV_PORT = getDevPort()
+
+// --- Minimal i18n for main process (FR / EN) ---
+const mainProcessI18n = {
+  fr: {
+    updateTitle: 'BloumeChat — Mise à jour disponible',
+    updateBody: (version: string) => `La version ${version} est disponible. Cliquez pour mettre à jour.`,
+    trayNotice: "BloumeChat continue de tourner en arrière-plan. Cliquez sur l'icône pour rouvrir.",
+    trayOpen: 'Ouvrir BloumeChat',
+    trayAutoLaunch: 'Lancer au démarrage',
+    trayCheckUpdates: 'Vérifier les mises à jour (Store)',
+    trayReload: 'Recharger',
+    trayQuit: 'Quitter',
+  },
+  en: {
+    updateTitle: 'BloumeChat — Update available',
+    updateBody: (version: string) => `Version ${version} is available. Click to update.`,
+    trayNotice: "BloumeChat is still running in the background. Click the icon to reopen.",
+    trayOpen: 'Open BloumeChat',
+    trayAutoLaunch: 'Launch at startup',
+    trayCheckUpdates: 'Check for updates (Store)',
+    trayReload: 'Reload',
+    trayQuit: 'Quit',
+  },
+} as const;
+
+type AppLocale = keyof typeof mainProcessI18n;
+
+function getAppLocale(): AppLocale {
+  // Prefer stored language (set by renderer via IPC in the future)
+  // For now, fall back to system locale
+  const locale = app.getLocale()?.toLowerCase() || 'fr';
+  return locale.startsWith('fr') ? 'fr' : 'en';
+}
+
 
 if (!isProd) {
   app.setPath('userData', `${app.getPath('userData')} (development)`)
@@ -181,12 +227,13 @@ function setAutoLaunch(enable: boolean) {
 // --- Build tray context menu (dynamic for auto-launch toggle) ---
 function buildTrayMenu() {
   const isAutoLaunch = settingsStore.get('autoLaunch', false)
+  const i18n = mainProcessI18n[getAppLocale()]
 
   return Menu.buildFromTemplate([
-    { label: 'Ouvrir BloumeChat', click: () => { mainWindow?.show(); mainWindow?.focus() } },
+    { label: i18n.trayOpen, click: () => { mainWindow?.show(); mainWindow?.focus() } },
     { type: 'separator' },
     {
-      label: 'Lancer au démarrage',
+      label: i18n.trayAutoLaunch,
       type: 'checkbox',
       checked: isAutoLaunch,
       click: (menuItem) => {
@@ -195,18 +242,28 @@ function buildTrayMenu() {
       }
     },
     { type: 'separator' },
-    { label: 'Vérifier les mises à jour', click: () => autoUpdater.checkForUpdatesAndNotify() },
-    { label: 'Recharger', click: () => mainWindow?.webContents.reload() },
+    {
+      // Microsoft Store handles updates for MSIX builds — just open the Store page
+      label: i18n.trayCheckUpdates,
+      click: () => shell.openExternal('ms-windows-store://pdp/?productid=XPDBZMTB5GVG3L')
+    },
+    { label: i18n.trayReload, click: () => mainWindow?.webContents.reload() },
     { type: 'separator' },
-    { label: 'Quitter', click: () => { isAppQuitting = true; app.quit() } }
+    { label: i18n.trayQuit, click: () => { isAppQuitting = true; app.quit() } }
   ])
 }
 
 ; (async () => {
   await app.whenReady()
 
-  if (isProd) {
-    prodPort = await startLocalServer();
+  // ONLY start the local static server if the app is packaged.
+  // This prevents conflicts when IS_PROD is true in config.json during development.
+  if (app.isPackaged && isProd) {
+    try {
+      prodPort = await startLocalServer();
+    } catch (e) {
+      console.error("Failed to start local production server:", e);
+    }
   }
 
   // Define allowed media permissions
@@ -220,38 +277,100 @@ function buildTrayMenu() {
     'clipboard-sanitized-write'
   ]
 
-  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    callback(allowedPermissions.includes(permission))
+  const mainSession = session.fromPartition('persist:main')
+
+  mainSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const isAllowed = allowedPermissions.includes(permission)
+    console.log(`[Permissions] Request for: ${permission} -> ${isAllowed ? "GRANTED" : "DENIED"}`)
+    callback(isAllowed)
   })
 
-  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
-    return allowedPermissions.includes(permission)
+  mainSession.setPermissionCheckHandler((webContents, permission) => {
+    const isAllowed = allowedPermissions.includes(permission)
+    // console.log(`[Permissions] Check for: ${permission} -> ${isAllowed ? "GRANTED" : "DENIED"}`)
+    return isAllowed
   })
 
   // Explicitly handle display capture requests (Screen Share)
-  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-    // Automatically select the first available desktop (usually the entire screen)
-    // In a full implementation, you'd show a custom picker UI, but this allows basic screen sharing
-    import('electron').then(({ desktopCapturer }) => {
-      desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
-        // Just grab the first screen for simplicity, or find the primary display
-        const screenSource = sources.find(s => s.id.startsWith('screen')) || sources[0]
-        if (screenSource) {
-          callback({ video: screenSource, audio: 'loopback' })
-        } else {
-          console.error("No screen sources found")
-        }
-      }).catch(err => {
-        console.error("Failed to get desktop sources:", err)
-      })
+  mainSession.setDisplayMediaRequestHandler((request, callback) => {
+    console.log("[ScreenShare] Media request received:", request.videoRequested ? "Video" : "None", request.audioRequested ? "Audio" : "None")
+
+    // Create a picker window
+    const pickerWin = new BrowserWindow({
+      width: 600,
+      height: 500,
+      frame: false,
+      resizable: false,
+      alwaysOnTop: true,
+      modal: true,
+      parent: mainWindow || undefined,
+      backgroundColor: '#111C44',
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        devTools: !app.isPackaged
+      }
     })
+
+    // Use app.isPackaged to decide between prod port (15999) and dev port (8899)
+    const port = app.isPackaged ? prodPort : DEV_PORT
+    const url = app.isPackaged
+      ? `http://127.0.0.1:${port}/renderer/screen-picker/index.html`
+      : `http://localhost:${port}/screen-picker/`
+
+    console.log("[ScreenShare] Loading picker URL:", url)
+
+    pickerWin.loadURL(url).catch(err => {
+      console.error("[ScreenShare] Failed to load picker URL:", err)
+      callback({})
+      if (!pickerWin.isDestroyed()) pickerWin.close()
+    })
+
+    const onSelect = (_event: any, sourceId: string) => {
+      console.log("[ScreenShare] Source selected:", sourceId)
+      desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+        const source = sources.find(s => s.id === sourceId)
+        if (source) {
+          console.log("[ScreenShare] Source found, granting access")
+          callback({ video: source, audio: 'loopback' })
+        } else {
+          console.error("[ScreenShare] Selected source not found anymore")
+          callback({})
+        }
+        cleanup()
+      }).catch(err => {
+        console.error("[ScreenShare] Error getting sources for callback:", err)
+        callback({})
+        cleanup()
+      })
+    }
+
+    const onCancel = () => {
+      console.log("[ScreenShare] Picker cancelled by user")
+      callback({})
+      cleanup()
+    }
+
+    const cleanup = () => {
+      ipcMain.removeListener('select-screen-source', onSelect)
+      ipcMain.removeListener('cancel-screen-source', onCancel)
+      if (pickerWin && !pickerWin.isDestroyed()) {
+        pickerWin.close()
+      }
+    }
+
+    ipcMain.on('select-screen-source', onSelect)
+    ipcMain.on('cancel-screen-source', onCancel)
+
+    pickerWin.on('closed', cleanup)
   })
 
   mainWindow = createWindow('main', {
     width: 1200,
     height: 800,
     titleBarStyle: 'hidden',
-    icon: path.join(__dirname, '../resources/icon.png'),
+    icon: app.isPackaged
+      ? path.join(process.resourcesPath, 'icon.png')
+      : path.join(app.getAppPath(), 'resources', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       partition: 'persist:main',
@@ -271,10 +390,19 @@ function buildTrayMenu() {
 
   // --- Tray Setup ---
   const trayIconFile = process.platform === 'win32' ? 'icon.ico' : 'icon.png'
-  const iconPath = isProd
+  const iconPath = app.isPackaged
     ? path.join(process.resourcesPath, trayIconFile)
     : path.join(app.getAppPath(), 'resources', trayIconFile)
-  const trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 24, height: 24 })
+
+  if (!fs.existsSync(iconPath)) {
+    console.error(`[Tray] Icon not found at: ${iconPath}`)
+  }
+
+  const rawIcon = nativeImage.createFromPath(iconPath)
+  const trayIcon = rawIcon.isEmpty()
+    ? nativeImage.createEmpty()
+    : rawIcon.resize({ width: 24, height: 24 })
+
   tray = new Tray(trayIcon)
   tray.setToolTip('BloumeChat')
   tray.setContextMenu(buildTrayMenu())
@@ -284,11 +412,14 @@ function buildTrayMenu() {
     else mainWindow?.show()
   })
 
-  if (isProd) {
-    await mainWindow.loadURL(`http://127.0.0.1:${prodPort}/home`)
+  if (app.isPackaged && isProd) {
+    await mainWindow.loadURL(`http://127.0.0.1:${prodPort}/home/`).catch(err => {
+      console.error("Failed to load production URL:", err)
+    })
   } else {
-    const devPort = process.argv[2] || 8899;
-    await mainWindow.loadURL(`http://localhost:${devPort}/home`)
+    await mainWindow.loadURL(`http://localhost:${DEV_PORT}/home/`).catch(err => {
+      console.error("Failed to load development URL:", err)
+    })
   }
 
   // --- Handle Links and Navigation ---
@@ -343,7 +474,7 @@ function buildTrayMenu() {
   });
 
   // --- Notification bridge with taskbar flash ---
-  const appIconPath = isProd
+  const appIconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'icon.png')
     : path.join(app.getAppPath(), 'resources', 'icon.png')
   const appIcon = nativeImage.createFromPath(appIconPath)
@@ -427,7 +558,7 @@ function buildTrayMenu() {
     }
   })
 
-  autoUpdater.checkForUpdatesAndNotify()
+  // Auto-update check disabled on startup — user can check manually via tray menu
 
   app.on('before-quit', () => { isAppQuitting = true })
 
@@ -443,10 +574,11 @@ function buildTrayMenu() {
 
       // Show tray notification only the first time
       if (!settingsStore.get('trayNoticeShown', false)) {
+        const i18n = mainProcessI18n[getAppLocale()];
         tray?.displayBalloon({
           iconType: 'info',
           title: 'BloumeChat',
-          content: 'BloumeChat continue de tourner en arrière-plan. Cliquez sur l\'icône pour rouvrir.',
+          content: i18n.trayNotice,
         })
         settingsStore.set('trayNoticeShown', true)
       }
@@ -530,6 +662,27 @@ ipcMain.on('write-clipboard', (_event, text: string) => {
 // --- Zoom IPC ---
 ipcMain.handle('get-zoom-level', () => mainWindow?.webContents.getZoomLevel() || 0)
 
+// --- Screen Picker IPC ---
+ipcMain.handle('get-screen-sources', async () => {
+  console.log("[ScreenShare] Fetching sources for picker UI...")
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['window', 'screen'],
+      thumbnailSize: { width: 320, height: 180 },
+      fetchWindowIcons: true
+    })
+    console.log(`[ScreenShare] Found ${sources.length} sources.`)
+    return sources.map(s => ({
+      id: s.id,
+      name: s.name,
+      thumbnail: s.thumbnail.toDataURL()
+    }))
+  } catch (err) {
+    console.error("[ScreenShare] Failed to get sources for IPC:", err)
+    return []
+  }
+})
+
 // --- Auto-Updater IPC Bridge ---
 let isUpdateIgnored = false;
 
@@ -550,15 +703,30 @@ autoUpdater.on('update-available', (info) => {
 
   if (isUpdateIgnored) return;
 
-  // Automatic redirect to update page ONLY if not already there
-  const currentUrl = mainWindow?.webContents.getURL();
-  if (currentUrl && !currentUrl.includes('/update')) {
+  const i18n = mainProcessI18n[getAppLocale()];
+
+  // Show a system notification instead of auto-redirecting to the update page
+  const updateNotification = new Notification({
+    title: i18n.updateTitle,
+    body: i18n.updateBody(info.version),
+    icon: nativeImage.createFromPath(
+      app.isPackaged
+        ? path.join(process.resourcesPath, 'icon.png')
+        : path.join(app.getAppPath(), 'resources', 'icon.png')
+    )
+  });
+
+  updateNotification.on('click', () => {
+    mainWindow?.show();
+    mainWindow?.focus();
     const port = isProd ? prodPort : (process.argv[2] || 8899);
     const updateUrl = isProd
       ? `http://127.0.0.1:${port}/update`
       : `http://localhost:${port}/update`;
     mainWindow?.loadURL(updateUrl);
-  }
+  });
+
+  updateNotification.show();
 })
 
 ipcMain.on('ignore-update', () => {

@@ -45,6 +45,12 @@ const handler = {
     return () => ipcRenderer.removeListener('deep-link', listener)
   },
   writeToClipboard: (text: string) => ipcRenderer.send('write-clipboard', text),
+
+  // --- Screen Share Picker ---
+  getScreenSources: (): Promise<{ id: string; name: string; thumbnail: string }[]> =>
+    ipcRenderer.invoke('get-screen-sources'),
+  selectScreenSource: (sourceId: string) => ipcRenderer.send('select-screen-source', sourceId),
+  cancelScreenSource: () => ipcRenderer.send('cancel-screen-source'),
 }
 
 contextBridge.exposeInMainWorld('ipc', handler)

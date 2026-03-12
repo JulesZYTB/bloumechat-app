@@ -1,0 +1,201 @@
+import React, { useEffect, useState } from 'react'
+import Head from 'next/head'
+
+// ---- i18n (self-contained) ----
+const Dict = {
+    fr: {
+        title: 'Partage d\'écran | BloumeChat',
+        heading: 'Choisir quoi partager',
+        screens: 'Écrans',
+        windows: 'Fenêtres',
+        share: 'Partager',
+        cancel: 'Annuler',
+        loading: 'Chargement des sources...',
+        noSources: 'Aucune source disponible.',
+    },
+    en: {
+        title: 'Screen Share | BloumeChat',
+        heading: 'Choose what to share',
+        screens: 'Screens',
+        windows: 'Windows',
+        share: 'Share',
+        cancel: 'Cancel',
+        loading: 'Loading sources...',
+        noSources: 'No sources available.',
+    },
+}
+
+type Lang = keyof typeof Dict
+
+interface Source {
+    id: string
+    name: string
+    thumbnail: string // data URL
+    isScreen: boolean
+}
+
+export default function ScreenPickerPage() {
+    const [lang, setLang] = useState<Lang>('fr')
+    const [sources, setSources] = useState<Source[]>([])
+    const [selected, setSelected] = useState<string | null>(null)
+    const [tab, setTab] = useState<'screens' | 'windows'>('screens')
+    const [loading, setLoading] = useState(true)
+
+    const d = Dict[lang]
+
+    useEffect(() => {
+        // Detect lang from navigator
+        const loc = navigator.language?.toLowerCase() || 'fr'
+        setLang(loc.startsWith('fr') ? 'fr' : 'en')
+
+        // Request sources from main process
+        // @ts-ignore
+        if (window.ipc?.getScreenSources) {
+            // @ts-ignore
+            window.ipc.getScreenSources().then((raw: any[]) => {
+                const mapped: Source[] = raw.map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    thumbnail: s.thumbnail,
+                    isScreen: s.id.startsWith('screen'),
+                }))
+                setSources(mapped)
+                // Auto-select first screen
+                const firstScreen = mapped.find(s => s.isScreen)
+                if (firstScreen) setSelected(firstScreen.id)
+                setLoading(false)
+            })
+        }
+    }, [])
+
+    const handleShare = () => {
+        if (!selected) return
+        // @ts-ignore
+        window.ipc?.selectScreenSource(selected)
+    }
+
+    const handleCancel = () => {
+        // @ts-ignore
+        window.ipc?.cancelScreenSource()
+    }
+
+    const filtered = sources.filter(s => tab === 'screens' ? s.isScreen : !s.isScreen)
+
+    return (
+        <div className="flex flex-col h-screen bg-[#111C44] text-white font-sans overflow-hidden select-none">
+            <Head>
+                <title>{d.title}</title>
+            </Head>
+
+            {/* Drag titlebar */}
+            <div
+                className="h-8 shrink-0 flex items-center px-3 justify-between"
+                style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+            >
+                <span className="text-[10px] uppercase tracking-widest font-black opacity-40">
+                    {d.heading}
+                </span>
+                <button
+                    onClick={() => setLang(l => l === 'fr' ? 'en' : 'fr')}
+                    className="text-[9px] font-black opacity-30 hover:opacity-100 transition-opacity uppercase"
+                    style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+                >
+                    {lang === 'fr' ? 'EN' : 'FR'}
+                </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-1 px-3 pb-2 shrink-0 border-b border-white/5">
+                {(['screens', 'windows'] as const).map(t => (
+                    <button
+                        key={t}
+                        onClick={() => setTab(t)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                            tab === t
+                                ? 'bg-primary/20 text-primary border border-primary/30'
+                                : 'text-white/40 hover:text-white/70'
+                        }`}
+                    >
+                        {t === 'screens' ? d.screens : d.windows}
+                    </button>
+                ))}
+            </div>
+
+            {/* Sources grid */}
+            <div className="flex-1 overflow-y-auto p-3">
+                {loading ? (
+                    <div className="flex items-center justify-center h-full text-white/30 text-sm">
+                        {d.loading}
+                    </div>
+                ) : filtered.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-white/30 text-sm">
+                        {d.noSources}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                        {filtered.map(source => (
+                            <button
+                                key={source.id}
+                                onClick={() => setSelected(source.id)}
+                                onDoubleClick={handleShare}
+                                className={`group relative rounded-xl overflow-hidden border-2 transition-all bg-black/30 text-left ${
+                                    selected === source.id
+                                        ? 'border-primary shadow-lg shadow-primary/20 scale-[1.02]'
+                                        : 'border-white/5 hover:border-white/20'
+                                }`}
+                            >
+                                {/* Thumbnail */}
+                                <div className="aspect-video w-full overflow-hidden bg-black/50">
+                                    {source.thumbnail ? (
+                                        <img
+                                            src={source.thumbnail}
+                                            alt={source.name}
+                                            className="w-full h-full object-contain"
+                                            draggable={false}
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center opacity-20">
+                                            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                                            </svg>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Label */}
+                                <div className="px-2 py-1.5 flex items-center gap-1.5">
+                                    {selected === source.id && (
+                                        <div className="w-2 h-2 rounded-full bg-primary shrink-0 animate-pulse" />
+                                    )}
+                                    <span className="text-xs font-medium truncate text-white/80 group-hover:text-white transition-colors">
+                                        {source.name}
+                                    </span>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Footer actions */}
+            <div
+                className="shrink-0 flex items-center justify-end gap-2 px-3 py-3 border-t border-white/5"
+                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            >
+                <button
+                    onClick={handleCancel}
+                    className="px-5 py-2 rounded-full text-sm font-bold text-white/50 hover:text-white hover:bg-white/5 transition-all"
+                >
+                    {d.cancel}
+                </button>
+                <button
+                    onClick={handleShare}
+                    disabled={!selected}
+                    className="px-6 py-2 rounded-full text-sm font-bold bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    {d.share}
+                </button>
+            </div>
+        </div>
+    )
+}
