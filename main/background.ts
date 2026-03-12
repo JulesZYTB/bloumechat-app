@@ -137,6 +137,7 @@ async function startLocalServer(): Promise<number> {
       if (pathname === '/' || pathname === '') pathname = '/home/index.html';
       else if (pathname === '/home' || pathname === '/home/') pathname = '/home/index.html';
       else if (pathname === '/update' || pathname === '/update/') pathname = '/update/index.html';
+      else if (pathname === '/screen-picker' || pathname === '/screen-picker/') pathname = '/screen-picker/index.html';
       else if (!pathname.includes('.')) {
         if (fs.existsSync(path.join(__dirname, pathname + '.html'))) {
           pathname += '.html';
@@ -314,7 +315,7 @@ function buildTrayMenu() {
     // Use app.isPackaged to decide between prod port (15999) and dev port (8899)
     const port = app.isPackaged ? prodPort : DEV_PORT
     const url = app.isPackaged
-      ? `http://127.0.0.1:${port}/renderer/screen-picker/index.html`
+      ? `http://127.0.0.1:${port}/screen-picker/index.html`
       : `http://localhost:${port}/screen-picker/`
 
     console.log("[ScreenShare] Loading picker URL:", url)
