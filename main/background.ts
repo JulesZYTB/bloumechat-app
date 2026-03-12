@@ -294,13 +294,21 @@ function buildTrayMenu() {
 
   // Explicitly handle display capture requests (Screen Share)
   mainSession.setDisplayMediaRequestHandler((request, callback) => {
-    console.log("[ScreenShare] Media request received:", request.videoRequested ? "Video" : "None", request.audioRequested ? "Audio" : "None")
-
     let callbackCalled = false
-    const smartCallback = (cfg: any) => {
+    const smartCallback = (cfg?: any) => {
       if (callbackCalled) return
       callbackCalled = true
-      callback(cfg)
+      try {
+        if (cfg && (cfg.video || cfg.audio)) {
+          console.log("[ScreenShare] Resolving media request with config")
+          callback(cfg)
+        } else {
+          console.log("[ScreenShare] Cancelling media request (no source provided)")
+          ;(callback as any)() // Correct way to cancel in some Electron versions
+        }
+      } catch (err) {
+        console.error("[ScreenShare] Exception in media callback:", err)
+      }
     }
 
     // Create a picker window
@@ -353,15 +361,15 @@ function buildTrayMenu() {
     }
 
     const onCancel = () => {
-      console.log("[ScreenShare] Picker cancelled by user")
-      smartCallback({})
+      console.log("[ScreenShare] Picker cancelled by user button")
+      smartCallback()
       cleanup()
     }
 
     const cleanup = () => {
       ipcMain.removeListener('select-screen-source', onSelect)
       ipcMain.removeListener('cancel-screen-source', onCancel)
-      smartCallback({}) // Ensure it's called even if window is just closed
+      smartCallback() // Ensure request is terminated if window is just closed
       if (pickerWin && !pickerWin.isDestroyed()) {
         pickerWin.close()
       }
