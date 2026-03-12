@@ -296,6 +296,13 @@ function buildTrayMenu() {
   mainSession.setDisplayMediaRequestHandler((request, callback) => {
     console.log("[ScreenShare] Media request received:", request.videoRequested ? "Video" : "None", request.audioRequested ? "Audio" : "None")
 
+    let callbackCalled = false
+    const smartCallback = (cfg: any) => {
+      if (callbackCalled) return
+      callbackCalled = true
+      callback(cfg)
+    }
+
     // Create a picker window
     const pickerWin = new BrowserWindow({
       width: 600,
@@ -322,7 +329,7 @@ function buildTrayMenu() {
 
     pickerWin.loadURL(url).catch(err => {
       console.error("[ScreenShare] Failed to load picker URL:", err)
-      callback({})
+      smartCallback({})
       if (!pickerWin.isDestroyed()) pickerWin.close()
     })
 
@@ -332,28 +339,29 @@ function buildTrayMenu() {
         const source = sources.find(s => s.id === sourceId)
         if (source) {
           console.log("[ScreenShare] Source found, granting access")
-          callback({ video: source, audio: 'loopback' })
+          smartCallback({ video: source, audio: 'loopback' })
         } else {
           console.error("[ScreenShare] Selected source not found anymore")
-          callback({})
+          smartCallback({})
         }
         cleanup()
       }).catch(err => {
         console.error("[ScreenShare] Error getting sources for callback:", err)
-        callback({})
+        smartCallback({})
         cleanup()
       })
     }
 
     const onCancel = () => {
       console.log("[ScreenShare] Picker cancelled by user")
-      callback({})
+      smartCallback({})
       cleanup()
     }
 
     const cleanup = () => {
       ipcMain.removeListener('select-screen-source', onSelect)
       ipcMain.removeListener('cancel-screen-source', onCancel)
+      smartCallback({}) // Ensure it's called even if window is just closed
       if (pickerWin && !pickerWin.isDestroyed()) {
         pickerWin.close()
       }
