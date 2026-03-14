@@ -275,6 +275,7 @@ function buildTrayMenu() {
     'notifications',
     'fullscreen',
     'clipboard-read',
+    'clipboard-write',
     'clipboard-sanitized-write'
   ]
 
@@ -582,22 +583,26 @@ function buildTrayMenu() {
   // --- Save maximized state & show tray notice on close ---
   mainWindow.on('close', (event) => {
     if (!isAppQuitting) {
-      event.preventDefault()
+      const minimizeToTray = settingsStore.get('minimizeToTray', true)
+      
+      if (minimizeToTray) {
+        event.preventDefault()
 
-      // Save maximized state before hiding
-      settingsStore.set('wasMaximized', mainWindow?.isMaximized() || false)
+        // Save maximized state before hiding
+        settingsStore.set('wasMaximized', mainWindow?.isMaximized() || false)
 
-      mainWindow?.hide()
+        mainWindow?.hide()
 
-      // Show tray notification only the first time
-      if (!settingsStore.get('trayNoticeShown', false)) {
-        const i18n = mainProcessI18n[getAppLocale()];
-        tray?.displayBalloon({
-          iconType: 'info',
-          title: 'BloumeChat',
-          content: i18n.trayNotice,
-        })
-        settingsStore.set('trayNoticeShown', true)
+        // Show tray notification only the first time
+        if (!settingsStore.get('trayNoticeShown', false)) {
+          const i18n = mainProcessI18n[getAppLocale()];
+          tray?.displayBalloon({
+            iconType: 'info',
+            title: 'BloumeChat',
+            content: i18n.trayNotice,
+          })
+          settingsStore.set('trayNoticeShown', true)
+        }
       }
     }
   })
@@ -666,6 +671,7 @@ ipcMain.on('window-maximize', () => {
 })
 ipcMain.on('window-close', () => { BrowserWindow.getFocusedWindow()?.close() })
 ipcMain.handle('get-env', (event, key: string) => appConfig[key] || process.env[key])
+ipcMain.handle('get-platform', () => process.platform)
 
 // --- Auto-Launch IPC ---
 ipcMain.handle('get-auto-launch', () => settingsStore.get('autoLaunch', false))
@@ -678,6 +684,16 @@ ipcMain.on('write-clipboard', (_event, text: string) => {
 
 // --- Zoom IPC ---
 ipcMain.handle('get-zoom-level', () => mainWindow?.webContents.getZoomLevel() || 0)
+ipcMain.on('set-zoom-level', (_event, level: number) => {
+  mainWindow?.webContents.setZoomLevel(level)
+  settingsStore.set('zoomLevel', level)
+})
+
+// --- Tray IPC ---
+ipcMain.handle('get-minimize-to-tray', () => settingsStore.get('minimizeToTray', true))
+ipcMain.on('set-minimize-to-tray', (_event, enable: boolean) => {
+  settingsStore.set('minimizeToTray', enable)
+})
 
 // --- Screen Picker IPC ---
 ipcMain.handle('get-screen-sources', async () => {
@@ -711,7 +727,7 @@ autoUpdater.autoDownload = false; // Require explicit user interaction to downlo
 // is self-signed (not issued by a trusted CA), which causes electron-updater to reject
 // updates with "not signed by the application owner" (Windows status UntrustedRoot).
 // Replace this with a CA-trusted OV/EV certificate to re-enable verification.
-autoUpdater.verifyUpdateCodeSignature = false;
+(autoUpdater as any).verifyUpdateCodeSignature = false;
 
 autoUpdater.on('checking-for-update', () => mainWindow?.webContents.send('update-status', { status: 'checking' }))
 autoUpdater.on('update-available', (info) => {

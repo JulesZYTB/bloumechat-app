@@ -27,6 +27,7 @@ function detectLang(): Lang {
 
 export default function HomePage() {
   const [siteUrl, setSiteUrl] = useState('')
+  const [platform, setPlatform] = useState<string>('win32')
   const [isReady, setIsReady] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const loadingStartRef = useRef(Date.now())
@@ -68,7 +69,11 @@ export default function HomePage() {
     const fetchEnv = async () => {
       // @ts-ignore
       const baseUrl = await window.ipc.getEnv('NEXT_PUBLIC_SITE_URL') || 'https://bloumechat.com'
-      setSiteUrl(`${baseUrl}/app`)
+      setSiteUrl(`${baseUrl}/app?platform=desktop`)
+
+      // @ts-ignore
+      const p = await window.ipc.invoke?.('get-platform') || 'win32'
+      setPlatform(p)
 
       // Ensure minimum loading time of 5 seconds
       const elapsed = Date.now() - loadingStartRef.current
@@ -92,6 +97,36 @@ export default function HomePage() {
       } else if (event.data?.type === 'SET_BADGE_COUNT') {
         // @ts-ignore
         window.ipc.setBadgeCount(event.data.count ?? 0)
+      } else if (event.data?.type === 'IPC_INVOKE') {
+        const { id, method, args } = event.data;
+        const ipc = (window as any).ipc;
+        
+        // Convert dash-case from webapp to camelCase used in desktop app
+        const methodMap: Record<string, string> = {
+          'get-auto-launch': 'getAutoLaunch',
+          'set-auto-launch': 'setAutoLaunch',
+          'get-minimize-to-tray': 'getMinimizeToTray',
+          'set-minimize-to-tray': 'setMinimizeToTray',
+          'get-zoom-level': 'getZoomLevel',
+          'set-zoom-level': 'setZoomLevel',
+          'write-to-clipboard': 'writeToClipboard'
+        };
+
+        const targetMethod = methodMap[method] || method;
+
+        if (ipc && typeof ipc[targetMethod] === 'function') {
+          Promise.resolve(ipc[targetMethod](...args))
+            .then(result => {
+              if (iframeRef.current?.contentWindow) {
+                iframeRef.current.contentWindow.postMessage({ type: 'IPC_RESPONSE', id, result }, '*');
+              }
+            })
+            .catch(error => {
+              if (iframeRef.current?.contentWindow) {
+                iframeRef.current.contentWindow.postMessage({ type: 'IPC_RESPONSE', id, error: error.message }, '*');
+              }
+            });
+        }
       }
     }
 
@@ -183,30 +218,61 @@ export default function HomePage() {
         </div>
 
         {/* Right Side: Window Controls */}
-        <div className="flex items-center justify-end flex-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          <button
-            // @ts-ignore
-            onClick={() => window.ipc.minimize()}
-            className="w-9 h-[30px] flex items-center justify-center hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
-          >
-            <svg viewBox="0 0 10 10" className="w-2 h-2" stroke="currentColor" strokeWidth="1"><path d="M 0,5 L 10,5" /></svg>
-          </button>
+        <div className="flex-1 flex items-center justify-end" style={{ WebkitAppRegion: 'no-drag' } as any}>
+          {platform === 'darwin' || platform === 'linux' ? (
+            <div className="flex items-center space-x-2 px-2">
+              <button
+                // @ts-ignore
+                onClick={() => window.ipc.close()}
+                className="w-3 h-3 rounded-full bg-[#ff5f56] hover:brightness-90 transition-all focus:outline-none shadow-sm flex items-center justify-center group"
+                title="Close"
+              >
+                <span className="text-[8px] text-black/50 opacity-0 group-hover:opacity-100 font-bold">×</span>
+              </button>
+              <button
+                // @ts-ignore
+                onClick={() => window.ipc.minimize()}
+                className="w-3 h-3 rounded-full bg-[#ffbd2e] hover:brightness-90 transition-all focus:outline-none shadow-sm flex items-center justify-center group"
+                title="Minimize"
+              >
+                <span className="text-[10px] text-black/50 opacity-0 group-hover:opacity-100 font-bold leading-[0]">-</span>
+              </button>
+              <button
+                // @ts-ignore
+                onClick={() => window.ipc.maximize()}
+                className="w-3 h-3 rounded-full bg-[#27c93f] hover:brightness-90 transition-all focus:outline-none shadow-sm flex items-center justify-center group"
+                title="Maximize"
+              >
+                <span className="text-[6px] text-black/50 opacity-0 group-hover:opacity-100 font-bold">□</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <button
+                // @ts-ignore
+                onClick={() => window.ipc.minimize()}
+                className="w-9 h-[30px] flex items-center justify-center hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+              >
+                <svg viewBox="0 0 10 10" className="w-2 h-2" stroke="currentColor" strokeWidth="1"><path d="M 0,5 L 10,5" /></svg>
+              </button>
 
-          <button
-            // @ts-ignore
-            onClick={() => window.ipc.maximize()}
-            className="w-9 h-[30px] flex items-center justify-center hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
-          >
-            <svg viewBox="0 0 10 10" className="w-2 h-2" stroke="currentColor" strokeWidth="1" fill="none"><rect x="0.5" y="0.5" width="9" height="9" /></svg>
-          </button>
+              <button
+                // @ts-ignore
+                onClick={() => window.ipc.maximize()}
+                className="w-9 h-[30px] flex items-center justify-center hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+              >
+                <svg viewBox="0 0 10 10" className="w-2 h-2" stroke="currentColor" strokeWidth="1" fill="none"><rect x="0.5" y="0.5" width="9" height="9" /></svg>
+              </button>
 
-          <button
-            // @ts-ignore
-            onClick={() => window.ipc.close()}
-            className="w-10 h-[30px] flex items-center justify-center hover:bg-red-500 hover:text-white text-muted-foreground transition-colors focus:outline-none"
-          >
-            <svg viewBox="0 0 10 10" className="w-2 h-2" stroke="currentColor" strokeWidth="1.2"><path d="M 0,0 L 10,10 M 10,0 L 0,10" /></svg>
-          </button>
+              <button
+                // @ts-ignore
+                onClick={() => window.ipc.close()}
+                className="w-10 h-[30px] flex items-center justify-center hover:bg-red-500 hover:text-white text-muted-foreground transition-colors focus:outline-none"
+              >
+                <svg viewBox="0 0 10 10" className="w-2 h-2" stroke="currentColor" strokeWidth="1.2"><path d="M 0,0 L 10,10 M 10,0 L 0,10" /></svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

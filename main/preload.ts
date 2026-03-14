@@ -39,6 +39,9 @@ const handler = {
   getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch'),
   setAutoLaunch: (enable: boolean) => ipcRenderer.send('set-auto-launch', enable),
   getZoomLevel: () => ipcRenderer.invoke('get-zoom-level'),
+  setZoomLevel: (level: number) => ipcRenderer.send('set-zoom-level', level),
+  getMinimizeToTray: () => ipcRenderer.invoke('get-minimize-to-tray'),
+  setMinimizeToTray: (enable: boolean) => ipcRenderer.send('set-minimize-to-tray', enable),
   onDeepLink: (callback: (data: { action: string; id: string, queryParams?: Record<string, string> }) => void) => {
     const listener = (event: any, data: any) => callback(data)
     ipcRenderer.on('deep-link', listener)

@@ -17,6 +17,10 @@ files:
 extraResources:
   - from: resources/LICENSE.txt
     to: LICENSE.txt
+  - from: resources/icon.ico
+    to: icon.ico
+  - from: resources/icon.png
+    to: icon.png
 publish:
   provider: github
   owner: JulesZYTB
